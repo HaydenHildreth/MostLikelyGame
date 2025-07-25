@@ -1,3 +1,8 @@
+from bottle import route, run
+
+@route('/')
+def main():
+    return '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -725,3 +730,7 @@
     </script>
 </body>
 </html>
+'''
+
+if __name__ == '__main__':
+    run(host='0.0.0.0', port=6969, debug=True)
