@@ -241,8 +241,8 @@ def main():
             </div>
             
             <div class="input-group">
-                <label for="gameCode">Game Code (optional - for joining specific room):</label>
-                <input type="text" id="gameCode" placeholder="Leave empty to create/join default room">
+                <label for="gameCode">Game Code (leave empty to create new room):</label>
+                <input type="text" id="gameCode" placeholder="Enter code to join existing game">
             </div>
             
             <div class="status-message" id="joinStatus"></div>
@@ -319,7 +319,8 @@ def main():
             gamePhase: 'join',
             hasSubmitted: false,
             hasVoted: false,
-            currentVoteIndex: 0
+            currentVoteIndex: 0,
+            selectedVote: null
         };
 
         let updateInterval;
@@ -442,6 +443,7 @@ def main():
                     switchPhase('voting');
                     gameState.hasVoted = false;
                     gameState.currentVoteIndex = 0;
+                    gameState.selectedVote = null;
                     startVotingPhase(gameData);
                 } else if (gameData.phase === 'results') {
                     switchPhase('results');
@@ -592,7 +594,18 @@ def main():
             if (gameData.currentVoteIndex !== gameState.currentVoteIndex) {
                 gameState.currentVoteIndex = gameData.currentVoteIndex;
                 gameState.hasVoted = false;
+                gameState.selectedVote = null;
                 showCurrentVote(gameData);
+            } else {
+                // Just update the vote count display
+                const votedCount = Object.keys(gameData.votes).filter(key => 
+                    key.startsWith(`${gameData.currentVoteIndex}_`)
+                ).length;
+                
+                const statusEl = document.getElementById('votingStatus');
+                if (statusEl) {
+                    statusEl.innerHTML = `Votes submitted: ${votedCount}/${gameData.players.length}`;
+                }
             }
         }
 
@@ -608,12 +621,14 @@ def main():
             const submission = gameData.submissions[gameData.currentVoteIndex];
             const votingContent = document.getElementById('votingContent');
             
-            // Don't let players vote for themselves on their own submission
-            const availablePlayers = gameData.players.filter(p => p.name !== submission.submitter);
-            
-            const playersButtons = availablePlayers.map(player => 
-                `<button class="vote-btn" onclick="vote('${player.name}')">${player.name}</button>`
+            // Allow voting for ALL players
+            const playersButtons = gameData.players.map(player => 
+                `<button class="vote-btn" onclick="selectVote('${player.name}')" id="vote-${player.name}">${player.name}</button>`
             ).join('');
+            
+            // Check if this player has already voted
+            const existingVote = gameData.votes[`${gameData.currentVoteIndex}_${gameState.playerName}`];
+            const hasVoted = !!existingVote;
             
             votingContent.innerHTML = `
                 <div class="voting-item">
@@ -624,8 +639,22 @@ def main():
                     <div class="vote-buttons">
                         ${playersButtons}
                     </div>
+                    <div style="margin-top: 20px;">
+                        <div id="selectedVote" style="margin-bottom: 15px; font-weight: bold; color: #4CAF50;"></div>
+                        <button class="btn" id="submitVoteBtn" onclick="submitVote()" disabled>
+                            ${hasVoted ? 'Change Vote' : 'Submit Vote'}
+                        </button>
+                    </div>
                 </div>
             `;
+            
+            // If player already voted, show their selection
+            if (hasVoted) {
+                document.getElementById('selectedVote').textContent = `You voted for: ${existingVote}`;
+                document.getElementById(`vote-${existingVote}`).classList.add('selected');
+                document.getElementById('submitVoteBtn').disabled = false;
+                gameState.selectedVote = existingVote;
+            }
             
             // Update voting status
             const votedCount = Object.keys(gameData.votes).filter(key => 
@@ -633,23 +662,37 @@ def main():
             ).length;
             
             document.getElementById('votingStatus').innerHTML = 
-                `Votes: ${votedCount}/${gameData.players.length} ${gameState.hasVoted ? '(You voted ✓)' : ''}`;
+                `Votes submitted: ${votedCount}/${gameData.players.length}`;
         }
 
-        function vote(player) {
-            if (gameState.hasVoted) return;
+        function selectVote(player) {
+            // Visual feedback - remove previous selection
+            document.querySelectorAll('.vote-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById(`vote-${player}`).classList.add('selected');
+            
+            // Store selected vote locally (not submitted yet)
+            gameState.selectedVote = player;
+            
+            // Update UI
+            document.getElementById('selectedVote').textContent = `Selected: ${player}`;
+            document.getElementById('submitVoteBtn').disabled = false;
+        }
+
+        function submitVote() {
+            if (!gameState.selectedVote) return;
             
             const gameData = getGameData();
             
-            // Store vote
-            gameData.votes[`${gameData.currentVoteIndex}_${gameState.playerName}`] = player;
+            // Store vote in game data
+            gameData.votes[`${gameData.currentVoteIndex}_${gameState.playerName}`] = gameState.selectedVote;
             gameState.hasVoted = true;
             
-            // Visual feedback
-            document.querySelectorAll('.vote-btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.classList.add('selected');
-            
             setGameData(gameData);
+            
+            // Update UI to show vote was submitted
+            document.getElementById('selectedVote').textContent = `You voted for: ${gameState.selectedVote}`;
+            document.getElementById('submitVoteBtn').textContent = 'Vote Submitted ✓';
+            document.getElementById('submitVoteBtn').disabled = true;
             
             // Check if all players voted and move to next if host
             const votedCount = Object.keys(gameData.votes).filter(key => 
