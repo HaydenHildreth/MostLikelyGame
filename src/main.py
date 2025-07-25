@@ -437,7 +437,9 @@ def main():
                 
                 if (gameData.phase === 'submission') {
                     switchPhase('submission');
-                    gameState.hasSubmitted = gameData.players.find(p => p.name === gameState.playerName)?.hasSubmitted || false;
+                    // Reset submission state properly for new rounds
+                    const currentPlayer = gameData.players.find(p => p.name === gameState.playerName);
+                    gameState.hasSubmitted = currentPlayer ? currentPlayer.hasSubmitted : false;
                     startSubmissionPhase(gameData);
                 } else if (gameData.phase === 'voting') {
                     switchPhase('voting');
@@ -513,6 +515,12 @@ def main():
             document.getElementById('roundNumber').textContent = gameData.round;
             gameData.startTime = gameData.startTime || Date.now();
             setGameData(gameData);
+            
+            // Clear the input field only when starting a new submission phase
+            const submissionInputField = document.getElementById('submission');
+            if (submissionInputField && !gameState.hasSubmitted) {
+                submissionInputField.value = '';
+            }
         }
 
         function updateSubmissionTimer(gameData) {
@@ -547,10 +555,20 @@ def main():
             
             submissionList.innerHTML = statusHtml;
             
-            // Hide submission input if already submitted
+            // Show/hide submission input based on current player's submission status
             const submissionInput = document.getElementById('submissionInput');
-            if (gameState.hasSubmitted) {
+            const submissionInputField = document.getElementById('submission');
+            const currentPlayer = gameData.players.find(p => p.name === gameState.playerName);
+            
+            if (currentPlayer && currentPlayer.hasSubmitted) {
                 submissionInput.style.display = 'none';
+            } else {
+                submissionInput.style.display = 'block';
+                // Only clear the input if it's empty and we're in a new round
+                // Don't clear if user is actively typing
+                if (submissionInputField && submissionInputField.value === '' && !gameState.hasSubmitted) {
+                    // Input is already empty, no need to clear
+                }
             }
         }
 
@@ -605,6 +623,21 @@ def main():
                 const statusEl = document.getElementById('votingStatus');
                 if (statusEl) {
                     statusEl.innerHTML = `Votes submitted: ${votedCount}/${gameData.players.length}`;
+                }
+                
+                // Check if this player has voted for the current question
+                const hasVotedForCurrent = gameData.votes[`${gameData.currentVoteIndex}_${gameState.playerName}`];
+                if (hasVotedForCurrent && !gameState.hasVoted) {
+                    gameState.hasVoted = true;
+                    gameState.selectedVote = hasVotedForCurrent;
+                    // Update UI to reflect voted state
+                    const selectedEl = document.getElementById('selectedVote');
+                    const submitBtn = document.getElementById('submitVoteBtn');
+                    if (selectedEl && submitBtn) {
+                        selectedEl.textContent = `You voted for: ${hasVotedForCurrent}`;
+                        submitBtn.textContent = 'Vote Submitted ✓';
+                        submitBtn.disabled = true;
+                    }
                 }
             }
         }
@@ -694,18 +727,25 @@ def main():
             document.getElementById('submitVoteBtn').textContent = 'Vote Submitted ✓';
             document.getElementById('submitVoteBtn').disabled = true;
             
-            // Check if all players voted and move to next if host
-            const votedCount = Object.keys(gameData.votes).filter(key => 
-                key.startsWith(`${gameData.currentVoteIndex}_`)
-            ).length;
-            
-            if (votedCount >= gameData.players.length && gameState.isHost) {
-                setTimeout(() => {
-                    const updatedGameData = getGameData();
-                    updatedGameData.currentVoteIndex++;
-                    setGameData(updatedGameData);
-                }, 2000);
-            }
+            // Immediately check if all players voted and move to next if host
+            setTimeout(() => {
+                const updatedGameData = getGameData();
+                const votedCount = Object.keys(updatedGameData.votes).filter(key => 
+                    key.startsWith(`${updatedGameData.currentVoteIndex}_`)
+                ).length;
+                
+                if (votedCount >= updatedGameData.players.length && gameState.isHost) {
+                    // Move to next vote or results
+                    if (updatedGameData.currentVoteIndex < updatedGameData.submissions.length - 1) {
+                        updatedGameData.currentVoteIndex++;
+                        setGameData(updatedGameData);
+                    } else {
+                        // All votes done, move to results
+                        updatedGameData.phase = 'results';
+                        setGameData(updatedGameData);
+                    }
+                }
+            }, 500); // Reduced delay
         }
 
         function showResults(gameData) {
@@ -767,10 +807,17 @@ def main():
             gameData.votes = {};
             gameData.currentVoteIndex = 0;
             gameData.startTime = Date.now();
+            
+            // Reset all player states for new round
             gameData.players.forEach(p => {
                 p.hasSubmitted = false;
                 p.hasVoted = false;
             });
+            
+            // Reset local game state
+            gameState.hasSubmitted = false;
+            gameState.hasVoted = false;
+            gameState.selectedVote = null;
             
             setGameData(gameData);
         }
