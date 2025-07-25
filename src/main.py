@@ -320,7 +320,8 @@ def main():
             hasSubmitted: false,
             hasVoted: false,
             currentVoteIndex: 0,
-            selectedVote: null
+            selectedVote: null,
+            submissionTimer: null
         };
 
         let updateInterval;
@@ -462,6 +463,8 @@ def main():
             // Update voting status
             if (gameData.phase === 'voting') {
                 updateVotingPhase(gameData);
+                // Host checks for vote progression every update cycle
+                checkVoteProgression(gameData);
             }
         }
 
@@ -521,22 +524,54 @@ def main():
             if (submissionInputField && !gameState.hasSubmitted) {
                 submissionInputField.value = '';
             }
+            
+            // Start the submission timer only if we're the host
+            if (gameState.isHost) {
+                startSubmissionTimer(gameData);
+            }
+        }
+
+        function startSubmissionTimer(gameData) {
+            // Clear any existing timer
+            if (gameState.submissionTimer) {
+                clearInterval(gameState.submissionTimer);
+            }
+            
+            gameState.submissionTimer = setInterval(() => {
+                const updatedGameData = getGameData();
+                
+                // Check if we're still in submission phase
+                if (updatedGameData.phase !== 'submission') {
+                    clearInterval(gameState.submissionTimer);
+                    gameState.submissionTimer = null;
+                    return;
+                }
+                
+                const timeElapsed = Math.floor((Date.now() - updatedGameData.startTime) / 1000);
+                const timeLeft = Math.max(0, updatedGameData.timeLimit - timeElapsed);
+                
+                // Check if time is up or all players submitted
+                const allSubmitted = updatedGameData.players.every(p => p.hasSubmitted);
+                if (timeLeft === 0 || allSubmitted) {
+                    clearInterval(gameState.submissionTimer);
+                    gameState.submissionTimer = null;
+                    
+                    // Move to voting phase
+                    updatedGameData.phase = 'voting';
+                    updatedGameData.currentVoteIndex = 0;
+                    updatedGameData.players.forEach(p => p.hasVoted = false);
+                    setGameData(updatedGameData);
+                }
+            }, 1000);
         }
 
         function updateSubmissionTimer(gameData) {
             const timeElapsed = Math.floor((Date.now() - gameData.startTime) / 1000);
             const timeLeft = Math.max(0, gameData.timeLimit - timeElapsed);
             
-            document.getElementById('submissionTimer').textContent = timeLeft;
-            
-            // Check if time is up or all players submitted
-            const allSubmitted = gameData.players.every(p => p.hasSubmitted);
-            if ((timeLeft === 0 || allSubmitted) && gameState.isHost) {
-                // Move to voting phase
-                gameData.phase = 'voting';
-                gameData.currentVoteIndex = 0;
-                gameData.players.forEach(p => p.hasVoted = false);
-                setGameData(gameData);
+            const timerEl = document.getElementById('submissionTimer');
+            if (timerEl) {
+                timerEl.textContent = timeLeft;
             }
         }
 
@@ -609,22 +644,23 @@ def main():
         }
 
         function updateVotingPhase(gameData) {
+            // Update vote count display
+            const votedCount = Object.keys(gameData.votes).filter(key => 
+                key.startsWith(`${gameData.currentVoteIndex}_`)
+            ).length;
+            
+            const statusEl = document.getElementById('votingStatus');
+            if (statusEl) {
+                statusEl.innerHTML = `Votes submitted: ${votedCount}/${gameData.players.length}`;
+            }
+            
+            // Handle vote index changes
             if (gameData.currentVoteIndex !== gameState.currentVoteIndex) {
                 gameState.currentVoteIndex = gameData.currentVoteIndex;
                 gameState.hasVoted = false;
                 gameState.selectedVote = null;
                 showCurrentVote(gameData);
             } else {
-                // Just update the vote count display
-                const votedCount = Object.keys(gameData.votes).filter(key => 
-                    key.startsWith(`${gameData.currentVoteIndex}_`)
-                ).length;
-                
-                const statusEl = document.getElementById('votingStatus');
-                if (statusEl) {
-                    statusEl.innerHTML = `Votes submitted: ${votedCount}/${gameData.players.length}`;
-                }
-                
                 // Check if this player has voted for the current question
                 const hasVotedForCurrent = gameData.votes[`${gameData.currentVoteIndex}_${gameState.playerName}`];
                 if (hasVotedForCurrent && !gameState.hasVoted) {
@@ -727,25 +763,29 @@ def main():
             document.getElementById('submitVoteBtn').textContent = 'Vote Submitted ✓';
             document.getElementById('submitVoteBtn').disabled = true;
             
-            // Immediately check if all players voted and move to next if host
-            setTimeout(() => {
-                const updatedGameData = getGameData();
-                const votedCount = Object.keys(updatedGameData.votes).filter(key => 
-                    key.startsWith(`${updatedGameData.currentVoteIndex}_`)
-                ).length;
-                
-                if (votedCount >= updatedGameData.players.length && gameState.isHost) {
-                    // Move to next vote or results
-                    if (updatedGameData.currentVoteIndex < updatedGameData.submissions.length - 1) {
-                        updatedGameData.currentVoteIndex++;
-                        setGameData(updatedGameData);
-                    } else {
-                        // All votes done, move to results
-                        updatedGameData.phase = 'results';
-                        setGameData(updatedGameData);
-                    }
+            // Let the host check for progression in the next update cycle
+            // This gives time for all localStorage updates to propagate
+        }
+
+        function checkVoteProgression(gameData) {
+            if (!gameState.isHost || gameData.phase !== 'voting') return;
+            
+            const votedCount = Object.keys(gameData.votes).filter(key => 
+                key.startsWith(`${gameData.currentVoteIndex}_`)
+            ).length;
+            
+            if (votedCount >= gameData.players.length) {
+                // All players have voted for this question
+                if (gameData.currentVoteIndex < gameData.submissions.length - 1) {
+                    // Move to next vote
+                    gameData.currentVoteIndex++;
+                    setGameData(gameData);
+                } else {
+                    // All votes done, move to results
+                    gameData.phase = 'results';
+                    setGameData(gameData);
                 }
-            }, 500); // Reduced delay
+            }
         }
 
         function showResults(gameData) {
@@ -819,6 +859,12 @@ def main():
             gameState.hasVoted = false;
             gameState.selectedVote = null;
             
+            // Clear any existing timer
+            if (gameState.submissionTimer) {
+                clearInterval(gameState.submissionTimer);
+                gameState.submissionTimer = null;
+            }
+            
             setGameData(gameData);
         }
 
@@ -849,6 +895,9 @@ def main():
         window.addEventListener('beforeunload', function() {
             if (updateInterval) {
                 clearInterval(updateInterval);
+            }
+            if (gameState.submissionTimer) {
+                clearInterval(gameState.submissionTimer);
             }
         });
     </script>
