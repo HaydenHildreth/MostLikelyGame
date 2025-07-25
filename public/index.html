@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Most Likely To Game</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 90%;
+            min-height: 500px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .join-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        input {
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .game-area {
+            display: none;
+        }
+
+        .players-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .player {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            margin: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 1rem;
+        }
+
+        .prompt-area {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .current-prompt {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .submission-area {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .submission-area input {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .voting-area {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .vote-button {
+            padding: 1rem;
+            background: #fff;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .vote-button:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .vote-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .score-board {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            font-weight: bold;
+        }
+
+        .status {
+            text-align: center;
+            margin: 1rem 0;
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .waiting-players {
+            text-align: center;
+            color: #666;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            .voting-area {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Most Likely To</h1>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <!-- Join Room Form -->
+        <div id="join-form" class="join-form">
+            <input type="text" id="room-id" placeholder="Enter Room Code (e.g., ROOM123)" maxlength="20">
+            <input type="text" id="player-name" placeholder="Enter Your Name" maxlength="20">
+            <button onclick="joinRoom()">Join Game</button>
+        </div>
+
+        <!-- Game Area -->
+        <div id="game-area" class="game-area">
+            <div class="players-list">
+                <strong>Players in Room:</strong>
+                <div id="players-container"></div>
+            </div>
+
+            <div id="waiting-area" class="waiting-players">
+                <p>Waiting for more players...</p>
+                <button onclick="startGame()" id="start-button">Start Game (Need 2+ players)</button>
+            </div>
+
+            <div id="timer" class="timer" style="display: none;"></div>
+
+            <!-- Submission Phase -->
+            <div id="submission-phase" style="display: none;">
+                <div class="prompt-area">
+                    <h2>Submit Your Prompt!</h2>
+                    <p>Create a "Most likely to..." prompt for everyone to vote on.</p>
+                </div>
+                <div class="submission-area">
+                    <input type="text" id="prompt-input" placeholder="Most likely to..." maxlength="100">
+                    <button onclick="submitPrompt()">Submit Prompt</button>
+                </div>
+                <div id="submission-status" class="status"></div>
+            </div>
+
+            <!-- Voting Phase -->
+            <div id="voting-phase" style="display: none;">
+                <div class="prompt-area">
+                    <div class="current-prompt" id="current-prompt"></div>
+                    <p>Vote for who is most likely to do this!</p>
+                </div>
+                <div class="voting-area" id="voting-buttons"></div>
+                <div id="voting-status" class="status"></div>
+            </div>
+
+            <!-- Results Phase -->
+            <div id="results-phase" style="display: none;">
+                <div class="prompt-area">
+                    <div class="current-prompt" id="results-prompt"></div>
+                </div>
+                <div class="results" id="vote-results"></div>
+                <div class="status">Next prompt starting in a few seconds...</div>
+            </div>
+
+            <!-- Final Results -->
+            <div id="final-results" style="display: none;">
+                <div class="prompt-area">
+                    <h2>🎉 Game Over! 🎉</h2>
+                </div>
+                <div class="score-board" id="final-scores"></div>
+                <button onclick="resetGame()" style="margin-top: 1rem;">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let gameState = null;
+        let currentPlayerId = null;
+
+        // Game state management
+        socket.on('game-state', (state) => {
+            gameState = state;
+            updateUI();
+        });
+
+        socket.on('timer-update', (data) => {
+            updateTimer(data.timeLeft);
+        });
+
+        socket.on('error', (error) => {
+            showError(error.message);
+        });
+
+        function joinRoom() {
+            const roomId = document.getElementById('room-id').value.trim().toUpperCase();
+            const playerName = document.getElementById('player-name').value.trim();
+
+            if (!roomId || !playerName) {
+                showError('Please enter both room code and your name');
+                return;
+            }
+
+            currentPlayerId = socket.id;
+            socket.emit('join-room', { roomId, playerName });
+        }
+
+        function startGame() {
+            socket.emit('start-game');
+        }
+
+        function submitPrompt() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) return;
+
+            if (!prompt.toLowerCase().startsWith('most likely to')) {
+                showError('Prompt must start with "Most likely to"');
+                return;
+            }
+
+            socket.emit('submit-prompt', { prompt });
+            document.getElementById('prompt-input').value = '';
+        }
+
+        function submitVote(playerId) {
+            socket.emit('submit-vote', { playerId });
+        }
+
+        function resetGame() {
+            location.reload();
+        }
+
+        function updateUI() {
+            if (!gameState) return;
+
+            document.getElementById('join-form').style.display = 'none';
+            document.getElementById('game-area').style.display = 'block';
+
+            // Update players list
+            updatePlayersList();
+
+            // Update game phase
+            hideAllPhases();
+            
+            switch (gameState.gameState) {
+                case 'waiting':
+                    document.getElementById('waiting-area').style.display = 'block';
+                    document.getElementById('start-button').disabled = gameState.playerCount < 2;
+                    break;
+                case 'submitting':
+                    showSubmissionPhase();
+                    break;
+                case 'voting':
+                    showVotingPhase();
+                    break;
+                case 'results':
+                    showResultsPhase();
+                    break;
+                case 'finished':
+                    showFinalResults();
+                    break;
+            }
+        }
+
+        function updatePlayersList() {
+            const container = document.getElementById('players-container');
+            container.innerHTML = '';
+            
+            gameState.players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player';
+                playerDiv.textContent = player.name;
+                container.appendChild(playerDiv);
+            });
+        }
+
+        function hideAllPhases() {
+            document.getElementById('waiting-area').style.display = 'none';
+            document.getElementById('submission-phase').style.display = 'none';
+            document.getElementById('voting-phase').style.display = 'none';
+            document.getElementById('results-phase').style.display = 'none';
+            document.getElementById('final-results').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+        }
+
+        function showSubmissionPhase() {
+            document.getElementById('submission-phase').style.display = 'block';
+            document.getElementById('timer').style.display = 'block';
+            
+            const hasSubmitted = gameState.hasSubmitted[socket.id];
+            const submitButton = document.querySelector('#submission-phase button');
+            const input = document.getElementById('prompt-input');
+            
+            if (hasSubmitted) {
+                submitButton.disabled = true;
+                input.disabled = true;
+                document.getElementById('submission-status').textContent = 'Prompt submitted! Waiting for others...';
+            } else {
+                submitButton.disabled = false;
+                input.disabled = false;
+                document.getElementById('submission-status').textContent = '';
+            }
+        }
+
+        function showVotingPhase() {
+            document.getElementById('voting-phase').style.display = 'block';
+            document.getElementById('timer').style.display = 'block';
+            
+            const prompt = gameState.currentPrompt;
+            document.getElementById('current-prompt').textContent = prompt.prompt;
+            
+            const votingButtons = document.getElementById('voting-buttons');
+            votingButtons.innerHTML = '';
+            
+            const hasVoted = gameState.hasVoted[socket.id];
+            
+            gameState.players.forEach(player => {
+                if (player.id !== socket.id) { // Can't vote for yourself
+                    const button = document.createElement('button');
+                    button.className = 'vote-button';
+                    button.textContent = player.name;
+                    button.onclick = () => submitVote(player.id);
+                    button.disabled = hasVoted;
+                    votingButtons.appendChild(button);
+                }
+            });
+            
+            document.getElementById('voting-status').textContent = hasVoted ? 
+                'Vote submitted! Waiting for others...' : 'Click to vote for a player';
+        }
+
+        function showResultsPhase() {
+            document.getElementById('results-phase').style.display = 'block';
+            
+            const prompt = gameState.currentPrompt;
+            document.getElementById('results-prompt').textContent = prompt.prompt;
+            
+            const resultsDiv = document.getElementById('vote-results');
+            resultsDiv.innerHTML = '<h3>Voting Results:</h3>';
+            
+            if (gameState.voteResults) {
+                const { voteCount, voteDetails } = gameState.voteResults;
+                
+                // Sort players by vote count
+                const sortedResults = Object.entries(voteCount)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([playerId, votes]) => {
+                        const player = gameState.players.find(p => p.id === playerId);
+                        return { player, votes, voters: voteDetails[playerId] || [] };
+                    });
+                
+                sortedResults.forEach(({ player, votes, voters }) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+                    resultItem.innerHTML = `
+                        <span><strong>${player.name}</strong> - ${votes} vote${votes !== 1 ? 's' : ''}</span>
+                        <span class="voters">${voters.join(', ')}</span>
+                    `;
+                    resultsDiv.appendChild(resultItem);
+                });
+            }
+        }
+
+        function showFinalResults() {
+            document.getElementById('final-results').style.display = 'block';
+            
+            const scoresDiv = document.getElementById('final-scores');
+            scoresDiv.innerHTML = '<h3>Final Scores:</h3>';
+            
+            // Sort players by score
+            const sortedScores = Object.entries(gameState.scores)
+                .sort(([,a], [,b]) => b - a)
+                .map(([playerId, score]) => {
+                    const player = gameState.players.find(p => p.id === playerId);
+                    return { player, score };
+                });
+            
+            sortedScores.forEach(({ player, score }, index) => {
+                const scoreItem = document.createElement('div');
+                scoreItem.className = 'score-item';
+                scoreItem.innerHTML = `
+                    <span>${index + 1}. ${player.name}</span>
+                    <span>${score} point${score !== 1 ? 's' : ''}</span>
+                `;
+                scoresDiv.appendChild(scoreItem);
+            });
+        }
+
+        function updateTimer(timeLeft) {
+            const timerDiv = document.getElementById('timer');
+            timerDiv.textContent = `Time remaining: ${timeLeft}s`;
+            
+            if (timeLeft <= 10) {
+                timerDiv.style.color = '#e74c3c';
+            } else {
+                timerDiv.style.color = '#f39c12';
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('room-id').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinRoom();
+        });
+        
+        document.getElementById('player-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinRoom();
+        });
+        
+        document.getElementById('prompt-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitPrompt();
+        });
+    </script>
+</body>
+</html>
