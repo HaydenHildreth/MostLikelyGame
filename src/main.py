@@ -324,32 +324,54 @@ def main():
 
         let updateInterval;
 
-        // Simulate multiplayer by using a shared data structure
+        // Use localStorage for cross-browser sharing with polling
         function getGameData() {
-            const data = JSON.parse(sessionStorage.getItem(`game_${gameState.gameCode}`) || '{}');
-            return {
-                players: data.players || [],
-                host: data.host || '',
-                phase: data.phase || 'lobby',
-                round: data.round || 1,
-                timeLimit: data.timeLimit || 60,
-                submissions: data.submissions || [],
-                votes: data.votes || {},
-                currentVoteIndex: data.currentVoteIndex || 0,
-                startTime: data.startTime || 0,
-                ...data
-            };
+            try {
+                const data = JSON.parse(localStorage.getItem(`mostLikelyGame_${gameState.gameCode}`) || '{}');
+                return {
+                    players: data.players || [],
+                    host: data.host || '',
+                    phase: data.phase || 'lobby',
+                    round: data.round || 1,
+                    timeLimit: data.timeLimit || 60,
+                    submissions: data.submissions || [],
+                    votes: data.votes || {},
+                    currentVoteIndex: data.currentVoteIndex || 0,
+                    startTime: data.startTime || 0,
+                    lastUpdate: data.lastUpdate || Date.now(),
+                    ...data
+                };
+            } catch (e) {
+                console.error('Error reading game data:', e);
+                return {
+                    players: [],
+                    host: '',
+                    phase: 'lobby',
+                    round: 1,
+                    timeLimit: 60,
+                    submissions: [],
+                    votes: {},
+                    currentVoteIndex: 0,
+                    startTime: 0,
+                    lastUpdate: Date.now()
+                };
+            }
         }
 
         function setGameData(data) {
-            sessionStorage.setItem(`game_${gameState.gameCode}`, JSON.stringify(data));
+            try {
+                data.lastUpdate = Date.now();
+                localStorage.setItem(`mostLikelyGame_${gameState.gameCode}`, JSON.stringify(data));
+            } catch (e) {
+                console.error('Error saving game data:', e);
+            }
         }
 
         function joinGame() {
             const nameInput = document.getElementById('playerName');
             const codeInput = document.getElementById('gameCode');
             const name = nameInput.value.trim();
-            const code = codeInput.value.trim() || 'MAIN';
+            let code = codeInput.value.trim();
             
             if (!name) {
                 document.getElementById('joinStatus').innerHTML = 
@@ -357,6 +379,12 @@ def main():
                 return;
             }
             
+            // Generate random game code if empty
+            if (!code) {
+                code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+            
+            // Set game state BEFORE getting game data
             gameState.playerName = name;
             gameState.gameCode = code;
             
@@ -386,12 +414,18 @@ def main():
         }
 
         function startGameUpdates() {
-            updateInterval = setInterval(updateGameState, 1000);
+            updateInterval = setInterval(updateGameState, 500); // Faster updates for better sync
             updateGameState();
         }
 
         function updateGameState() {
             const gameData = getGameData();
+            
+            // Check if game still exists and player is still in it
+            if (!gameData.players.some(p => p.name === gameState.playerName)) {
+                // Player was removed or game ended
+                return;
+            }
             
             // Update player list
             updatePlayerList(gameData);
@@ -402,7 +436,7 @@ def main():
                 
                 if (gameData.phase === 'submission') {
                     switchPhase('submission');
-                    gameState.hasSubmitted = false;
+                    gameState.hasSubmitted = gameData.players.find(p => p.name === gameState.playerName)?.hasSubmitted || false;
                     startSubmissionPhase(gameData);
                 } else if (gameData.phase === 'voting') {
                     switchPhase('voting');
@@ -701,7 +735,7 @@ def main():
         function endGame() {
             if (confirm('Are you sure you want to end the game?')) {
                 clearInterval(updateInterval);
-                sessionStorage.removeItem(`game_${gameState.gameCode}`);
+                localStorage.removeItem(`mostLikelyGame_${gameState.gameCode}`);
                 location.reload();
             }
         }
