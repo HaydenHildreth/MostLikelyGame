@@ -308,7 +308,7 @@
                     <h2>🎉 Game Over! 🎉</h2>
                 </div>
                 <div class="score-board" id="final-scores"></div>
-                <button onclick="resetGame()" style="margin-top: 1rem;">Play Again</button>
+                <button onclick="playAgain()" style="margin-top: 1rem;">Play Again</button>
             </div>
         </div>
     </div>
@@ -364,6 +364,10 @@
 
         function submitVote(playerId) {
             socket.emit('submit-vote', { playerId });
+        }
+
+        function playAgain() {
+            socket.emit('play-again');
         }
 
         function resetGame() {
@@ -455,14 +459,12 @@
             const hasVoted = gameState.hasVoted[socket.id];
             
             gameState.players.forEach(player => {
-                if (player.id !== socket.id) { // Can't vote for yourself
-                    const button = document.createElement('button');
-                    button.className = 'vote-button';
-                    button.textContent = player.name;
-                    button.onclick = () => submitVote(player.id);
-                    button.disabled = hasVoted;
-                    votingButtons.appendChild(button);
-                }
+                const button = document.createElement('button');
+                button.className = 'vote-button';
+                button.textContent = player.name;
+                button.onclick = () => submitVote(player.id);
+                button.disabled = hasVoted;
+                votingButtons.appendChild(button);
             });
             
             document.getElementById('voting-status').textContent = hasVoted ? 
@@ -518,8 +520,14 @@
             sortedScores.forEach(({ player, score }, index) => {
                 const scoreItem = document.createElement('div');
                 scoreItem.className = 'score-item';
+                
+                let trophy = '';
+                if (index === 0) trophy = '🏆 ';
+                else if (index === 1) trophy = '🥈 ';
+                else if (index === 2) trophy = '🥉 ';
+                
                 scoreItem.innerHTML = `
-                    <span>${index + 1}. ${player.name}</span>
+                    <span>${trophy}${index + 1}. ${player.name}</span>
                     <span>${score} point${score !== 1 ? 's' : ''}</span>
                 `;
                 scoresDiv.appendChild(scoreItem);
@@ -528,12 +536,28 @@
 
         function updateTimer(timeLeft) {
             const timerDiv = document.getElementById('timer');
-            timerDiv.textContent = `Time remaining: ${timeLeft}s`;
+            
+            let phase = '';
+            if (gameState.gameState === 'submitting') {
+                phase = 'Submit prompts: ';
+            } else if (gameState.gameState === 'voting') {
+                phase = 'Vote now: ';
+            }
+            
+            timerDiv.textContent = `${phase}${timeLeft}s remaining`;
             
             if (timeLeft <= 10) {
                 timerDiv.style.color = '#e74c3c';
-            } else {
+                timerDiv.style.fontSize = '1.8rem';
+                timerDiv.style.fontWeight = 'bold';
+            } else if (timeLeft <= 20) {
                 timerDiv.style.color = '#f39c12';
+                timerDiv.style.fontSize = '1.6rem';
+                timerDiv.style.fontWeight = 'bold';
+            } else {
+                timerDiv.style.color = '#27ae60';
+                timerDiv.style.fontSize = '1.5rem';
+                timerDiv.style.fontWeight = 'bold';
             }
         }
 
