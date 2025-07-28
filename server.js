@@ -230,6 +230,10 @@ class GameRoom {
         Object.fromEntries([...this.players.entries()].map(([id, p]) => [id, p.submitted])) : {},
       hasVoted: this.gameState === 'voting' ? 
         Object.fromEntries([...this.players.entries()].map(([id, p]) => [id, p.voted])) : {},
+      submissionCount: this.gameState === 'submitting' ? 
+        [...this.players.values()].filter(p => p.submitted).length : 0,
+      voteCount: this.gameState === 'voting' ? 
+        [...this.players.values()].filter(p => p.voted).length : 0,
       voteResults: this.gameState === 'results' ? this.getVoteResults() : null
     };
   }
