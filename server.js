@@ -124,18 +124,23 @@ class GameRoom {
       this.timer = null;
     }
     
+    // If no prompts were submitted, end the game
     if (this.prompts.length === 0) {
       this.gameState = 'finished';
+      io.to(this.roomId).emit('game-state', this.getGameState());
       return;
     }
     
     this.gameState = 'voting';
     this.votes.clear();
     
-    // Reset voted status
+    // Reset voted status for all players
     this.players.forEach(player => {
       player.voted = false;
     });
+    
+    // Emit the voting state first
+    io.to(this.roomId).emit('game-state', this.getGameState());
     
     this.startVotingTimer();
   }
@@ -163,7 +168,7 @@ class GameRoom {
       this.timer = null;
     }
     
-    // Calculate votes
+    // Calculate votes (even if not everyone voted)
     const voteCount = new Map();
     this.votes.forEach(votedPlayerId => {
       voteCount.set(votedPlayerId, (voteCount.get(votedPlayerId) || 0) + 1);
@@ -386,6 +391,15 @@ setInterval(() => {
   rooms.forEach((room, roomId) => {
     if (room.gameState === 'submitting' || room.gameState === 'voting') {
       io.to(roomId).emit('timer-update', { timeLeft: room.timeLeft });
+      
+      // Force end phase if timer reaches 0 (safety check)
+      if (room.timeLeft <= 0) {
+        if (room.gameState === 'submitting') {
+          room.endSubmissionPhase();
+        } else if (room.gameState === 'voting') {
+          room.endVotingPhase();
+        }
+      }
     }
   });
 }, 1000);
