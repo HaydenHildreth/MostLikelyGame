@@ -168,10 +168,13 @@ class GameRoom {
     
     this.gameState = 'results';
     
-    // Auto-proceed to next prompt after 5 seconds
+    // Emit the results state first
+    io.to(this.roomId).emit('game-state', this.getGameState());
+    
+    // Auto-proceed to next prompt after 3 seconds
     setTimeout(() => {
       this.nextPrompt();
-    }, 5000);
+    }, 3000);
   }
 
   nextPrompt() {
@@ -179,6 +182,8 @@ class GameRoom {
     
     if (this.currentPromptIndex >= this.prompts.length) {
       this.gameState = 'finished';
+      // Emit the final state to all players
+      io.to(this.roomId).emit('game-state', this.getGameState());
       return;
     }
     
@@ -189,6 +194,9 @@ class GameRoom {
     this.players.forEach(player => {
       player.voted = false;
     });
+    
+    // Emit the updated state before starting the timer
+    io.to(this.roomId).emit('game-state', this.getGameState());
     
     this.startVotingTimer();
   }
