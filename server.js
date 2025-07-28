@@ -98,10 +98,14 @@ class GameRoom {
     const player = this.players.get(socketId);
     if (!player || player.submitted) return false;
     
+    // Automatically add "Most likely to" if not present
+    const formattedPrompt = prompt.toLowerCase().startsWith('most likely to') ? 
+      prompt : `Most likely to ${prompt}`;
+    
     this.prompts.push({
       playerId: socketId,
       playerName: player.name,
-      prompt: prompt
+      prompt: formattedPrompt
     });
     
     player.submitted = true;
