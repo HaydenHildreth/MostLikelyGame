@@ -748,7 +748,7 @@
                 if (hasSubmitted) {
                     phase = 'Submitted! Waiting for others';
                 } else {
-                    phase = 'Submit prompts';
+                    phase = timeLeft <= 0 ? 'Time\'s up! Processing' : 'Submit prompts';
                 }
             } else if (gameState.gameState === 'voting') {
                 const hasVoted = gameState.hasVoted[socket.id];
@@ -760,13 +760,18 @@
                 if (hasVoted) {
                     phase = 'Voted! Waiting for others';
                 } else {
-                    phase = 'Vote now';
+                    phase = timeLeft <= 0 ? 'Time\'s up! Processing' : 'Vote now';
                 }
             }
             
-            timerDiv.textContent = `${phase}${progress}: ${timeLeft}s remaining`;
+            const timeDisplay = timeLeft <= 0 ? '0s remaining' : `${timeLeft}s remaining`;
+            timerDiv.textContent = `${phase}${progress}: ${timeDisplay}`;
             
-            if (timeLeft <= 10) {
+            if (timeLeft <= 0) {
+                timerDiv.style.color = '#e74c3c';
+                timerDiv.style.fontSize = '1.8rem';
+                timerDiv.style.fontWeight = 'bold';
+            } else if (timeLeft <= 10) {
                 timerDiv.style.color = '#e74c3c';
                 timerDiv.style.fontSize = '1.8rem';
                 timerDiv.style.fontWeight = 'bold';
