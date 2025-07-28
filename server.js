@@ -63,6 +63,11 @@ class GameRoom {
       player.voted = false;
     });
     
+    // Reset scores
+    this.scores.forEach((score, playerId) => {
+      this.scores.set(playerId, 0);
+    });
+    
     this.startSubmissionTimer();
     return true;
   }
@@ -133,7 +138,6 @@ class GameRoom {
 
   submitVote(socketId, votedPlayerId) {
     if (this.gameState !== 'voting') return false;
-    if (socketId === votedPlayerId) return false; // Can't vote for yourself
     
     const player = this.players.get(socketId);
     if (!player || player.voted) return false;
@@ -295,6 +299,34 @@ io.on('connection', (socket) => {
     } else {
       socket.emit('error', { message: 'Need at least 2 players to start' });
     }
+  });
+
+  socket.on('play-again', () => {
+    if (!socket.roomId) return;
+    
+    const room = rooms.get(socket.roomId);
+    if (!room) return;
+    
+    // Reset the room to waiting state
+    room.gameState = 'waiting';
+    room.currentRound = 0;
+    room.prompts = [];
+    room.currentPromptIndex = 0;
+    room.votes.clear();
+    
+    // Clear any active timer
+    if (room.timer) {
+      clearInterval(room.timer);
+      room.timer = null;
+    }
+    
+    // Reset player states but keep scores for reference
+    room.players.forEach(player => {
+      player.submitted = false;
+      player.voted = false;
+    });
+    
+    io.to(socket.roomId).emit('game-state', room.getGameState());
   });
 
   socket.on('submit-prompt', (data) => {
