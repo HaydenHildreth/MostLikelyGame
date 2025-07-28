@@ -625,10 +625,12 @@
             if (hasSubmitted) {
                 submitButton.disabled = true;
                 input.disabled = true;
-                document.getElementById('submission-status').textContent = 'Prompt submitted! Waiting for others...';
+                submitButton.textContent = '✓ Submitted';
+                document.getElementById('submission-status').textContent = `Prompt submitted! Waiting for ${gameState.playerCount - gameState.submissionCount} more player${gameState.playerCount - gameState.submissionCount !== 1 ? 's' : ''}...`;
             } else {
                 submitButton.disabled = false;
                 input.disabled = false;
+                submitButton.textContent = 'Submit Prompt';
                 document.getElementById('submission-status').textContent = '';
             }
         }
@@ -651,11 +653,20 @@
                 button.textContent = player.name;
                 button.onclick = () => submitVote(player.id);
                 button.disabled = hasVoted;
+                
+                // Add checkmark if this player has voted for someone
+                if (hasVoted) {
+                    button.style.opacity = '0.7';
+                }
+                
                 votingButtons.appendChild(button);
             });
             
-            document.getElementById('voting-status').textContent = hasVoted ? 
-                'Vote submitted! Waiting for others...' : 'Click to vote for a player';
+            if (hasVoted) {
+                document.getElementById('voting-status').textContent = `Vote submitted! Waiting for ${gameState.playerCount - gameState.voteCount} more player${gameState.playerCount - gameState.voteCount !== 1 ? 's' : ''}...`;
+            } else {
+                document.getElementById('voting-status').textContent = 'Click to vote for a player';
+            }
         }
 
         function showResultsPhase() {
@@ -725,13 +736,35 @@
             const timerDiv = document.getElementById('timer');
             
             let phase = '';
+            let progress = '';
+            
             if (gameState.gameState === 'submitting') {
-                phase = 'Submit prompts: ';
+                const hasSubmitted = gameState.hasSubmitted[socket.id];
+                const submissionCount = gameState.submissionCount;
+                const totalPlayers = gameState.playerCount;
+                
+                progress = ` (${submissionCount}/${totalPlayers})`;
+                
+                if (hasSubmitted) {
+                    phase = 'Submitted! Waiting for others';
+                } else {
+                    phase = 'Submit prompts';
+                }
             } else if (gameState.gameState === 'voting') {
-                phase = 'Vote now: ';
+                const hasVoted = gameState.hasVoted[socket.id];
+                const voteCount = gameState.voteCount;
+                const totalPlayers = gameState.playerCount;
+                
+                progress = ` (${voteCount}/${totalPlayers})`;
+                
+                if (hasVoted) {
+                    phase = 'Voted! Waiting for others';
+                } else {
+                    phase = 'Vote now';
+                }
             }
             
-            timerDiv.textContent = `${phase}${timeLeft}s remaining`;
+            timerDiv.textContent = `${phase}${progress}: ${timeLeft}s remaining`;
             
             if (timeLeft <= 10) {
                 timerDiv.style.color = '#e74c3c';
