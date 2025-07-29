@@ -30,23 +30,41 @@ class GameRoom {
     this.scores = new Map();
     this.timer = null;
     this.timeLeft = 0;
+    this.lobbyLeader = null; // First player to join becomes leader
+    this.lastActivity = Date.now(); // Track room activity for cleanup
   }
 
   addPlayer(socketId, playerName) {
+    // Set first player as lobby leader
+    if (this.players.size === 0) {
+      this.lobbyLeader = socketId;
+    }
+
     this.players.set(socketId, {
       id: socketId,
       name: playerName,
       ready: false,
       submitted: false,
-      voted: false
+      voted: false,
+      isLeader: socketId === this.lobbyLeader
     });
     this.scores.set(socketId, 0);
+    this.lastActivity = Date.now();
   }
 
   removePlayer(socketId) {
     this.players.delete(socketId);
     this.scores.delete(socketId);
     this.votes.delete(socketId);
+    
+    // If leader leaves, assign new leader
+    if (socketId === this.lobbyLeader && this.players.size > 0) {
+      const newLeader = this.players.keys().next().value;
+      this.lobbyLeader = newLeader;
+      this.players.get(newLeader).isLeader = true;
+    }
+    
+    this.lastActivity = Date.now();
   }
 
   startGame() {
@@ -68,6 +86,7 @@ class GameRoom {
       this.scores.set(playerId, 0);
     });
     
+    this.lastActivity = Date.now();
     this.startSubmissionTimer();
     return true;
   }
@@ -109,6 +128,7 @@ class GameRoom {
     });
     
     player.submitted = true;
+    this.lastActivity = Date.now();
     
     // Check if all players have submitted
     if ([...this.players.values()].every(p => p.submitted)) {
@@ -153,6 +173,7 @@ class GameRoom {
     
     this.votes.set(socketId, votedPlayerId);
     player.voted = true;
+    this.lastActivity = Date.now();
     
     // Check if all players have voted
     if ([...this.players.values()].every(p => p.voted)) {
@@ -231,6 +252,7 @@ class GameRoom {
       currentPrompt: this.getCurrentPrompt(),
       timeLeft: this.timeLeft,
       scores: Object.fromEntries(this.scores),
+      lobbyLeader: this.lobbyLeader,
       hasSubmitted: this.gameState === 'submitting' ? 
         Object.fromEntries([...this.players.entries()].map(([id, p]) => [id, p.submitted])) : {},
       hasVoted: this.gameState === 'voting' ? 
@@ -286,19 +308,36 @@ io.on('connection', (socket) => {
 
     const room = rooms.get(roomId);
     
-    // Check if game is already in progress
-    if (room.gameState !== 'waiting' && !room.players.has(socket.id)) {
-      socket.emit('error', { message: 'Game already in progress' });
+    // Check if player name is already taken in this room
+    const existingPlayer = [...room.players.values()].find(p => p.name === playerName);
+    if (existingPlayer) {
+      socket.emit('error', { message: 'Player name already taken in this room' });
       return;
     }
 
-    // Add player to room
+    // Add player to room (can join mid-game)
     room.addPlayer(socket.id, playerName);
     socket.join(roomId);
     socket.roomId = roomId;
 
+    // If joining mid-game, set appropriate states
+    if (room.gameState === 'submitting') {
+      // New player hasn't submitted yet
+      room.players.get(socket.id).submitted = false;
+    } else if (room.gameState === 'voting') {
+      // New player hasn't voted yet
+      room.players.get(socket.id).voted = false;
+    }
+
     // Emit updated game state to all players in room
     io.to(roomId).emit('game-state', room.getGameState());
+    
+    // Send welcome message to new player
+    if (room.gameState !== 'waiting') {
+      socket.emit('joined-ongoing-game', { 
+        message: 'You joined a game in progress!' 
+      });
+    }
   });
 
   socket.on('start-game', () => {
@@ -306,6 +345,12 @@ io.on('connection', (socket) => {
     
     const room = rooms.get(socket.roomId);
     if (!room) return;
+    
+    // Only lobby leader can start the game
+    if (socket.id !== room.lobbyLeader) {
+      socket.emit('error', { message: 'Only the lobby leader can start the game' });
+      return;
+    }
     
     if (room.startGame()) {
       io.to(socket.roomId).emit('game-state', room.getGameState());
@@ -320,12 +365,19 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.roomId);
     if (!room) return;
     
+    // Only lobby leader can start new game
+    if (socket.id !== room.lobbyLeader) {
+      socket.emit('error', { message: 'Only the lobby leader can start a new game' });
+      return;
+    }
+    
     // Reset the room to waiting state
     room.gameState = 'waiting';
     room.currentRound = 0;
     room.prompts = [];
     room.currentPromptIndex = 0;
     room.votes.clear();
+    room.lastActivity = Date.now();
     
     // Clear any active timer
     if (room.timer) {
@@ -403,6 +455,20 @@ setInterval(() => {
     }
   });
 }, 1000);
+
+// Room cleanup - remove inactive rooms every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  const ROOM_TIMEOUT = 30 * 60 * 1000; // 30 minutes of inactivity
+  
+  rooms.forEach((room, roomId) => {
+    if (now - room.lastActivity > ROOM_TIMEOUT) {
+      console.log(`Cleaning up inactive room: ${roomId}`);
+      if (room.timer) clearInterval(room.timer);
+      rooms.delete(roomId);
+    }
+  });
+}, 5 * 60 * 1000); // Check every 5 minutes
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
