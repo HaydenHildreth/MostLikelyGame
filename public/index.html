@@ -13,80 +13,144 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #333;
+            color: #2c3e50;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="80" r="1.5" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+            z-index: -1;
         }
 
         .container {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 800px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 2.5rem;
+            box-shadow: 
+                0 25px 50px rgba(0,0,0,0.15),
+                0 0 0 1px rgba(255,255,255,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.6);
+            max-width: 900px;
             width: 90%;
-            min-height: 500px;
+            min-height: 550px;
+            position: relative;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
+            position: relative;
         }
 
         .title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.1); }
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #64748b;
+            font-weight: 500;
         }
 
         .join-form {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            max-width: 400px;
+            gap: 1.5rem;
+            max-width: 450px;
             margin: 0 auto;
         }
 
         input {
-            padding: 1rem;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
+            padding: 1.2rem 1.5rem;
+            border: 2px solid transparent;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 15px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
         }
 
         input:focus {
             outline: none;
             border-color: #667eea;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
         }
 
         button {
-            padding: 1rem 2rem;
+            padding: 1.2rem 2rem;
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 1rem;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
         }
 
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
 
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .game-area {
@@ -94,28 +158,54 @@
         }
 
         .players-list {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1rem;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.6));
+            border-radius: 20px;
+            padding: 1.5rem;
             margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .players-title {
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
         }
 
         .player {
             display: inline-block;
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            margin: 0.25rem;
-            font-size: 0.9rem;
+            padding: 0.7rem 1.2rem;
+            border-radius: 25px;
+            margin: 0.3rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            animation: playerPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes playerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
 
         .timer {
             text-align: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #e74c3c;
-            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(241, 196, 15, 0.1));
+            border-radius: 15px;
+            border: 2px solid rgba(231, 76, 60, 0.2);
+            animation: timerPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes timerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
         .prompt-area {
@@ -124,65 +214,106 @@
         }
 
         .current-prompt {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 1.8rem;
+            font-weight: 700;
             color: #2c3e50;
             margin-bottom: 1rem;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 10px;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(240, 147, 251, 0.1));
+            border-radius: 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            animation: promptGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes promptGlow {
+            from { box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2); }
+            to { box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4); }
         }
 
         .submission-area {
-            max-width: 500px;
+            max-width: 600px;
             margin: 0 auto;
         }
 
         .submission-area input {
             width: 100%;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.2rem;
+        }
+
+        .prompt-prefix {
+            position: absolute;
+            left: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #667eea;
+            font-weight: 600;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .submission-area {
+            position: relative;
+        }
+
+        .submission-area input {
+            padding-left: 10rem;
         }
 
         .voting-area {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
         }
 
         .vote-button {
-            padding: 1rem;
-            background: #fff;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8));
             border: 2px solid #667eea;
             color: #667eea;
-            border-radius: 10px;
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 1.1rem;
+            backdrop-filter: blur(10px);
         }
 
         .vote-button:hover {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
         }
 
         .vote-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
         .results {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-top: 1rem;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.7));
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .result-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            animation: resultSlide 0.5s ease-out;
+        }
+
+        @keyframes resultSlide {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
         .result-item:last-child {
@@ -190,53 +321,112 @@
         }
 
         .score-board {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-top: 1rem;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.7));
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .score-item {
             display: flex;
             justify-content: space-between;
-            padding: 0.5rem 0;
-            font-weight: bold;
+            padding: 1rem 0;
+            font-weight: 700;
+            font-size: 1.1rem;
+            animation: scoreReveal 0.8s ease-out;
+        }
+
+        @keyframes scoreReveal {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
 
         .status {
             text-align: center;
-            margin: 1rem 0;
-            font-size: 1.1rem;
-            color: #666;
+            margin: 1.5rem 0;
+            font-size: 1.2rem;
+            color: #64748b;
+            font-weight: 500;
         }
 
         .error {
-            background: #e74c3c;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
             color: white;
-            padding: 1rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
+            padding: 1.2rem;
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
             display: none;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
         }
 
         .waiting-players {
             text-align: center;
-            color: #666;
-            margin: 1rem 0;
+            color: #64748b;
+            margin: 2rem 0;
         }
 
-        @media (max-width: 600px) {
+        .waiting-players p {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        h2, h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .phase-title {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
             .container {
                 margin: 1rem;
+                padding: 2rem;
+            }
+            
+            .title {
+                font-size: 2.5rem;
+            }
+            
+            .voting-area {
+                grid-template-columns: 1fr;
+            }
+
+            .current-prompt {
+                font-size: 1.5rem;
+            }
+
+            .timer {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 0.5rem;
                 padding: 1.5rem;
             }
             
             .title {
                 font-size: 2rem;
             }
-            
-            .voting-area {
-                grid-template-columns: 1fr;
+
+            .prompt-prefix {
+                display: none;
+            }
+
+            .submission-area input {
+                padding-left: 1.5rem;
             }
         }
     </style>
@@ -245,6 +435,7 @@
     <div class="container">
         <div class="header">
             <h1 class="title">Most Likely To</h1>
+            <p class="subtitle">The ultimate party game experience</p>
         </div>
 
         <div class="error" id="error"></div>
@@ -259,7 +450,7 @@
         <!-- Game Area -->
         <div id="game-area" class="game-area">
             <div class="players-list">
-                <strong>Players in Room:</strong>
+                <div class="players-title">Players in Room:</div>
                 <div id="players-container"></div>
             </div>
 
@@ -273,11 +464,12 @@
             <!-- Submission Phase -->
             <div id="submission-phase" style="display: none;">
                 <div class="prompt-area">
-                    <h2>Submit Your Prompt!</h2>
-                    <p>Create a "Most likely to..." prompt for everyone to vote on.</p>
+                    <h2 class="phase-title">Submit Your Prompt!</h2>
+                    <p>Create a creative scenario for everyone to vote on.</p>
                 </div>
                 <div class="submission-area">
-                    <input type="text" id="prompt-input" placeholder="Most likely to..." maxlength="100">
+                    <div class="prompt-prefix">Most likely to</div>
+                    <input type="text" id="prompt-input" placeholder="eat pizza for breakfast every day..." maxlength="80">
                     <button onclick="submitPrompt()">Submit Prompt</button>
                 </div>
                 <div id="submission-status" class="status"></div>
@@ -287,7 +479,7 @@
             <div id="voting-phase" style="display: none;">
                 <div class="prompt-area">
                     <div class="current-prompt" id="current-prompt"></div>
-                    <p>Vote for who is most likely to do this!</p>
+                    <p>🗳️ Vote for who is most likely to do this!</p>
                 </div>
                 <div class="voting-area" id="voting-buttons"></div>
                 <div id="voting-status" class="status"></div>
@@ -299,7 +491,7 @@
                     <div class="current-prompt" id="results-prompt"></div>
                 </div>
                 <div class="results" id="vote-results"></div>
-                <div class="status">Next prompt starting in a few seconds...</div>
+                <div class="status">⏳ Next prompt starting soon...</div>
             </div>
 
             <!-- Final Results -->
@@ -352,11 +544,6 @@
         function submitPrompt() {
             const prompt = document.getElementById('prompt-input').value.trim();
             if (!prompt) return;
-
-            if (!prompt.toLowerCase().startsWith('most likely to')) {
-                showError('Prompt must start with "Most likely to"');
-                return;
-            }
 
             socket.emit('submit-prompt', { prompt });
             document.getElementById('prompt-input').value = '';
@@ -438,10 +625,12 @@
             if (hasSubmitted) {
                 submitButton.disabled = true;
                 input.disabled = true;
-                document.getElementById('submission-status').textContent = 'Prompt submitted! Waiting for others...';
+                submitButton.textContent = '✓ Submitted';
+                document.getElementById('submission-status').textContent = `Prompt submitted! Waiting for ${gameState.playerCount - gameState.submissionCount} more player${gameState.playerCount - gameState.submissionCount !== 1 ? 's' : ''}...`;
             } else {
                 submitButton.disabled = false;
                 input.disabled = false;
+                submitButton.textContent = 'Submit Prompt';
                 document.getElementById('submission-status').textContent = '';
             }
         }
@@ -464,11 +653,20 @@
                 button.textContent = player.name;
                 button.onclick = () => submitVote(player.id);
                 button.disabled = hasVoted;
+                
+                // Add checkmark if this player has voted for someone
+                if (hasVoted) {
+                    button.style.opacity = '0.7';
+                }
+                
                 votingButtons.appendChild(button);
             });
             
-            document.getElementById('voting-status').textContent = hasVoted ? 
-                'Vote submitted! Waiting for others...' : 'Click to vote for a player';
+            if (hasVoted) {
+                document.getElementById('voting-status').textContent = `Vote submitted! Waiting for ${gameState.playerCount - gameState.voteCount} more player${gameState.playerCount - gameState.voteCount !== 1 ? 's' : ''}...`;
+            } else {
+                document.getElementById('voting-status').textContent = 'Click to vote for a player';
+            }
         }
 
         function showResultsPhase() {
@@ -538,15 +736,42 @@
             const timerDiv = document.getElementById('timer');
             
             let phase = '';
+            let progress = '';
+            
             if (gameState.gameState === 'submitting') {
-                phase = 'Submit prompts: ';
+                const hasSubmitted = gameState.hasSubmitted[socket.id];
+                const submissionCount = gameState.submissionCount;
+                const totalPlayers = gameState.playerCount;
+                
+                progress = ` (${submissionCount}/${totalPlayers})`;
+                
+                if (hasSubmitted) {
+                    phase = 'Submitted! Waiting for others';
+                } else {
+                    phase = timeLeft <= 0 ? 'Time\'s up! Processing' : 'Submit prompts';
+                }
             } else if (gameState.gameState === 'voting') {
-                phase = 'Vote now: ';
+                const hasVoted = gameState.hasVoted[socket.id];
+                const voteCount = gameState.voteCount;
+                const totalPlayers = gameState.playerCount;
+                
+                progress = ` (${voteCount}/${totalPlayers})`;
+                
+                if (hasVoted) {
+                    phase = 'Voted! Waiting for others';
+                } else {
+                    phase = timeLeft <= 0 ? 'Time\'s up! Processing' : 'Vote now';
+                }
             }
             
-            timerDiv.textContent = `${phase}${timeLeft}s remaining`;
+            const timeDisplay = timeLeft <= 0 ? '0s remaining' : `${timeLeft}s remaining`;
+            timerDiv.textContent = `${phase}${progress}: ${timeDisplay}`;
             
-            if (timeLeft <= 10) {
+            if (timeLeft <= 0) {
+                timerDiv.style.color = '#e74c3c';
+                timerDiv.style.fontSize = '1.8rem';
+                timerDiv.style.fontWeight = 'bold';
+            } else if (timeLeft <= 10) {
                 timerDiv.style.color = '#e74c3c';
                 timerDiv.style.fontSize = '1.8rem';
                 timerDiv.style.fontWeight = 'bold';
