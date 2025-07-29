@@ -456,7 +456,12 @@
 
             <div id="waiting-area" class="waiting-players">
                 <p>Waiting for more players...</p>
-                <button onclick="startGame()" id="start-button">Start Game (Need 2+ players)</button>
+                <div id="leader-controls">
+                    <button onclick="startGame()" id="start-button">Start Game (Need 2+ players)</button>
+                </div>
+                <div id="non-leader-message" style="display: none;">
+                    <p>⏳ Waiting for the lobby leader to start the game...</p>
+                </div>
             </div>
 
             <div id="timer" class="timer" style="display: none;"></div>
@@ -524,6 +529,10 @@
             showError(error.message);
         });
 
+        socket.on('joined-ongoing-game', (data) => {
+            showError(data.message, 'info');
+        });
+
         function joinRoom() {
             const roomId = document.getElementById('room-id').value.trim().toUpperCase();
             const playerName = document.getElementById('player-name').value.trim();
@@ -576,7 +585,19 @@
             switch (gameState.gameState) {
                 case 'waiting':
                     document.getElementById('waiting-area').style.display = 'block';
-                    document.getElementById('start-button').disabled = gameState.playerCount < 2;
+                    
+                    const isLeader = socket.id === gameState.lobbyLeader;
+                    const leaderControls = document.getElementById('leader-controls');
+                    const nonLeaderMessage = document.getElementById('non-leader-message');
+                    
+                    if (isLeader) {
+                        leaderControls.style.display = 'block';
+                        nonLeaderMessage.style.display = 'none';
+                        document.getElementById('start-button').disabled = gameState.playerCount < 2;
+                    } else {
+                        leaderControls.style.display = 'none';
+                        nonLeaderMessage.style.display = 'block';
+                    }
                     break;
                 case 'submitting':
                     showSubmissionPhase();
@@ -600,7 +621,17 @@
             gameState.players.forEach(player => {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player';
-                playerDiv.textContent = player.name;
+                
+                // Add crown emoji for lobby leader
+                const leaderIcon = player.isLeader ? '👑 ' : '';
+                playerDiv.textContent = `${leaderIcon}${player.name}`;
+                
+                // Style leader differently
+                if (player.isLeader) {
+                    playerDiv.style.background = 'linear-gradient(135deg, #f1c40f, #f39c12)';
+                    playerDiv.style.fontWeight = 'bold';
+                }
+                
                 container.appendChild(playerDiv);
             });
         }
@@ -724,12 +755,31 @@
                 else if (index === 1) trophy = '🥈 ';
                 else if (index === 2) trophy = '🥉 ';
                 
+                const leaderIcon = player.isLeader ? '👑 ' : '';
+                
                 scoreItem.innerHTML = `
-                    <span>${trophy}${index + 1}. ${player.name}</span>
+                    <span>${trophy}${index + 1}. ${leaderIcon}${player.name}</span>
                     <span>${score} point${score !== 1 ? 's' : ''}</span>
                 `;
                 scoresDiv.appendChild(scoreItem);
             });
+            
+            // Show play again button only for leader
+            const playAgainButton = document.querySelector('#final-results button');
+            const isLeader = socket.id === gameState.lobbyLeader;
+            
+            if (isLeader) {
+                playAgainButton.style.display = 'block';
+                playAgainButton.textContent = '🎮 Start New Game';
+            } else {
+                playAgainButton.style.display = 'none';
+                
+                // Add message for non-leaders
+                const waitingMsg = document.createElement('p');
+                waitingMsg.className = 'status';
+                waitingMsg.textContent = '⏳ Waiting for lobby leader to start a new game...';
+                document.getElementById('final-results').appendChild(waitingMsg);
+            }
         }
 
         function updateTimer(timeLeft) {
@@ -786,9 +836,16 @@
             }
         }
 
-        function showError(message) {
+        function showError(message, type = 'error') {
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = message;
+            
+            if (type === 'info') {
+                errorDiv.style.background = 'linear-gradient(135deg, #3498db, #2980b9)';
+            } else {
+                errorDiv.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+            }
+            
             errorDiv.style.display = 'block';
             setTimeout(() => {
                 errorDiv.style.display = 'none';
