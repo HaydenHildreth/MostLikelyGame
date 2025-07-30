@@ -515,6 +515,22 @@
         let gameState = null;
         let currentPlayerId = null;
 
+        // Check for room parameter in URL on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomFromUrl = urlParams.get('room');
+            
+            if (roomFromUrl) {
+                // Auto-fill the room code field
+                document.getElementById('room-id').value = roomFromUrl.toUpperCase();
+                // Focus on the player name field
+                document.getElementById('player-name').focus();
+                
+                // Show a helpful message
+                showError(`Ready to join room ${roomFromUrl.toUpperCase()}! Enter your name to continue.`, 'info');
+            }
+        });
+
         // Game state management
         socket.on('game-state', (state) => {
             gameState = state;
@@ -541,6 +557,11 @@
                 showError('Please enter both room code and your name');
                 return;
             }
+
+            // Update URL without refreshing the page
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('room', roomId);
+            window.history.replaceState({}, '', newUrl);
 
             currentPlayerId = socket.id;
             socket.emit('join-room', { roomId, playerName });
