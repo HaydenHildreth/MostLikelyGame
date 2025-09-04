@@ -1,5 +1,7 @@
 # Install
 
+NodeJS must be installed. If it isn't, download it [here](https://nodejs.org/en/download/).
+
 ```git clone https://github.com/HaydenHildreth/MostLikelyGame.git```
 
 ```cd MostLikelyGame```
